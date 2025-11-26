@@ -1,0 +1,228 @@
+@startuml
+title Diagramme de séquence - Réservation d'une salle (Symfony + React)
+
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+
+actor User as "Utilisateur"
+
+box "Frontend React" #LightBlue
+    participant Page as "RoomSearchPage\n<<Component>>"
+    participant Form as "SearchForm\n<<Component>>"
+    participant RoomList as "RoomList\n<<Component>>"
+    participant RoomCard as "RoomCard\n<<Component>>"
+    participant BookingModal as "BookingModal\n<<Component>>"
+    participant ApiClient as "apiClient\n<<Axios/Fetch>>"
+end box
+
+box "Backend Symfony" #LightGreen
+    participant Controller as "RoomController\n<<#[Route]>>"
+    participant AuthMiddleware as "JWTAuthenticator\n<<Security>>"
+    participant BookingSvc as "BookingService"
+    participant RoomSvc as "RoomService"
+    participant Checker as "AvailabilityChecker"
+    participant Repo as "BookingRepository\n<<Doctrine>>"
+    participant Messenger as "Symfony Messenger\n<<Async>>"
+end box
+
+database DB as "PostgreSQL"
+participant MailWorker as "MailerWorker\n<<Consumer>>"
+participant Mailer as "Symfony Mailer"
+
+== PHASE 1: Recherche de salles ==
+
+User -> Page: Accède à /rooms
+activate Page
+
+Page -> Page: useState({\n  rooms: [],\n  loading: true,\n  error: null\n})
+
+Page -> Form: Render <SearchForm />
+activate Form
+Form --> User: Affiche formulaire
+
+User -> Form: Remplit critères\n(date, capacité, équipements)
+Form -> Form: handleSubmit(e)
+Form -> Page: onSearch(criteria)
+deactivate Form
+
+Page -> Page: setLoading(true)
+Page -> ApiClient: fetchRooms(criteria)
+activate ApiClient
+
+ApiClient -> Controller: GET /api/rooms/search\n?date=2024-01-15\n&capacity=10\n&equipments[]=projector\nHeaders: Authorization: Bearer {jwt}
+
+activate Controller
+Controller -> AuthMiddleware: authenticate(request)
+activate AuthMiddleware
+
+alt Token invalide ou expiré
+    AuthMiddleware --> Controller: 401 Unauthorized
+    Controller --> ApiClient: { error: "Invalid token" }
+    ApiClient --> Page: throw Error
+    Page -> Page: setError("Session expirée")
+    Page --> User: Affiche message + redirect login
+else Token valide
+    AuthMiddleware --> Controller: User authenticated
+    deactivate AuthMiddleware
+    
+    Controller -> RoomSvc: searchRooms(criteria)
+    activate RoomSvc
+    
+    RoomSvc -> DB: SELECT r.*, \n  GROUP_CONCAT(e.name) as equipments\nFROM rooms r\nLEFT JOIN room_equipment re ON r.id = re.room_id\nLEFT JOIN equipments e ON re.equipment_id = e.id\nWHERE r.capacity >= :capacity\n  AND r.is_active = true\nGROUP BY r.id
+    
+    DB --> RoomSvc: ResultSet
+    
+    RoomSvc -> RoomSvc: hydrateEntities(results)
+    RoomSvc --> Controller: Collection<Room>
+    deactivate RoomSvc
+    
+    Controller -> Controller: serialize(rooms,\n  groups: ['room:read'])
+    Controller --> ApiClient: 200 OK\n{\n  "data": [...],\n  "meta": { "total": 5 }\n}
+    deactivate Controller
+end
+
+ApiClient --> Page: response.data
+deactivate ApiClient
+
+Page -> Page: setRooms(data)\nsetLoading(false)
+
+Page -> RoomList: <RoomList rooms={rooms} />
+activate RoomList
+
+loop pour chaque room dans rooms
+    RoomList -> RoomCard: <RoomCard\n  key={room.id}\n  room={room}\n  onSelect={handleSelect}\n/>
+    activate RoomCard
+    RoomCard --> RoomList: Render card
+    deactivate RoomCard
+end
+
+RoomList --> Page: Render list
+deactivate RoomList
+Page --> User: Affiche grille de salles
+deactivate Page
+
+== PHASE 2: Création de réservation ==
+
+User -> RoomCard: Click "Réserver"
+activate RoomCard
+RoomCard -> Page: onSelect(room)
+deactivate RoomCard
+
+activate Page
+Page -> Page: setSelectedRoom(room)\nsetModalOpen(true)
+
+Page -> BookingModal: <BookingModal\n  room={selectedRoom}\n  isOpen={true}\n/>
+activate BookingModal
+BookingModal --> User: Affiche modal\n(sélection horaires)
+
+User -> BookingModal: Sélectionne horaires\n+ confirme
+
+BookingModal -> BookingModal: validateForm()
+
+alt Validation frontend échouée
+    BookingModal -> BookingModal: setErrors({...})
+    BookingModal --> User: Affiche erreurs inline
+else Validation OK
+    BookingModal -> BookingModal: setSubmitting(true)
+    
+    BookingModal -> ApiClient: createBooking({\n  roomId,\n  startTime,\n  endTime,\n  title\n})
+    activate ApiClient
+    
+    ApiClient -> Controller: POST /api/bookings\nBody: { roomId, startTime, endTime, title }\nHeaders: Authorization: Bearer {jwt}
+    
+    activate Controller
+    Controller -> AuthMiddleware: authenticate + authorize
+    AuthMiddleware --> Controller: User with ROLE_USER
+    
+    Controller -> Controller: deserialize(request)\nvalidate(bookingRequest)
+    
+    alt Validation Symfony échouée
+        Controller --> ApiClient: 422 Unprocessable Entity\n{ "violations": [...] }
+        ApiClient --> BookingModal: throw ValidationError
+        BookingModal -> BookingModal: setErrors(violations)
+        BookingModal --> User: Affiche erreurs serveur
+    else Validation OK
+        Controller -> BookingSvc: createBooking(dto, user)
+        activate BookingSvc
+        
+        BookingSvc -> RoomSvc: findRoom(roomId)
+        RoomSvc -> DB: SELECT * FROM rooms WHERE id = :id
+        DB --> RoomSvc: Room entity
+        RoomSvc --> BookingSvc: Room
+        
+        BookingSvc -> Checker: checkAvailability(\n  room, startTime, endTime\n)
+        activate Checker
+        
+        Checker -> DB: SELECT COUNT(*) FROM bookings\nWHERE room_id = :roomId\n  AND status != 'cancelled'\n  AND (\n    (start_time <= :end AND end_time >= :start)\n  )
+        
+        DB --> Checker: count
+        
+        alt count > 0 (Conflit)
+            Checker --> BookingSvc: throw ConflictException
+            BookingSvc --> Controller: throw
+            Controller --> ApiClient: 409 Conflict\n{ "error": "Créneau indisponible" }
+            ApiClient --> BookingModal: throw ConflictError
+            BookingModal --> User: "Cette salle est déjà\nréservée sur ce créneau"
+        else Disponible
+            Checker --> BookingSvc: true
+            deactivate Checker
+            
+            BookingSvc -> BookingSvc: $booking = new Booking()\n->setRoom($room)\n->setUser($user)\n->setStartTime($start)\n->setEndTime($end)\n->setStatus('confirmed')
+            
+            BookingSvc -> Repo: save(booking)
+            activate Repo
+            Repo -> DB: BEGIN TRANSACTION\nINSERT INTO bookings (...)\nCOMMIT
+            DB --> Repo: OK (id: 42)
+            Repo --> BookingSvc: Booking (persisted)
+            deactivate Repo
+            
+            ' Notification asynchrone via Messenger
+            BookingSvc -> Messenger: dispatch(\n  new BookingConfirmedMessage(42)\n)
+            activate Messenger
+            Messenger -> Messenger: Queue message\n(doctrine/redis transport)
+            Messenger --> BookingSvc: Envelope
+            deactivate Messenger
+            
+            BookingSvc --> Controller: Booking
+            deactivate BookingSvc
+            
+            Controller -> Controller: serialize(booking,\n  groups: ['booking:read'])
+            Controller --> ApiClient: 201 Created\n{ "data": { booking } }
+            deactivate Controller
+            
+            ApiClient --> BookingModal: response.data
+            deactivate ApiClient
+            
+            BookingModal -> BookingModal: setSubmitting(false)\nsetSuccess(true)
+            BookingModal --> User:  "Réservation confirmée!"
+            
+            BookingModal -> Page: onSuccess(booking)
+            deactivate BookingModal
+            
+            Page -> Page: setModalOpen(false)\nrefreshRooms()
+            deactivate Page
+        end
+    end
+end
+
+== PHASE 3: Notification asynchrone (Worker) ==
+
+note over Messenger, Mailer
+  Processus séparé: bin/console messenger:consume async
+end note
+
+Messenger -> MailWorker: Consume message
+activate MailWorker
+
+MailWorker -> DB: SELECT booking + user + room\nWHERE id = 42
+DB --> MailWorker: Full booking data
+
+MailWorker -> Mailer: send(BookingConfirmationEmail)
+activate Mailer
+Mailer -> User: 📧 Email de confirmation\n(async, ~1-5 sec après)
+deactivate Mailer
+
+MailWorker -> DB: UPDATE bookings\nSET notification_sent = true\nWHERE id = 42
+deactivate MailWorker
+
+@enduml

@@ -1,0 +1,60 @@
+@startuml
+title Diagramme de Composants – Réservation de Salles
+skinparam componentStyle uml2
+skinparam linetype ortho
+
+' ===== FRONTEND COMPONENTS =====
+component "Public UI" as PublicUI
+component "Admin Dashboard" as AdminDashboard
+
+' ===== CONTROLLERS =====
+component "Public UI Controllers" as PublicUIControllers
+component "Admin Dashboard Controllers" as AdminDashboardControllers
+
+' ===== BACKEND SERVICES =====
+component "Reservation Service" as ReservationService
+component "Notification Service" as NotificationService
+component "Statistics Service" as StatisticsService
+component "Room Management Service" as RoomService
+component "Equipment Management Service" as EquipmentService
+component "Authentication Service" as AuthService
+
+' ===== REPOSITORIES =====
+component "Room Repository" as RoomRepo
+component "Reservation Repository" as ReservationRepo
+component "Equipment Repository" as EquipmentRepo
+component "User Repository" as UserRepo
+component "Statistics Repository" as StatisticsRepo
+
+' ===== DATABASE =====
+database "Database" as DB
+
+' ===== FRONTEND → CONTROLLERS =====
+PublicUI --> PublicUIControllers : REST
+AdminDashboard --> AdminDashboardControllers : REST
+
+' ===== CONTROLLERS → SERVICES =====
+PublicUIControllers --> ReservationService : REST
+PublicUIControllers --> AuthService : REST
+AdminDashboardControllers --> ReservationService : REST
+AdminDashboardControllers --> AuthService : REST
+AdminDashboardControllers --> RoomService : REST
+AdminDashboardControllers --> EquipmentService : REST
+AdminDashboardControllers --> StatisticsService : REST
+NotificationService --> PublicUIControllers : Event/Notification
+
+' ===== SERVICES → REPOSITORIES =====
+ReservationService --> ReservationRepo : CRUD
+RoomService --> RoomRepo : CRUD
+EquipmentService --> EquipmentRepo : CRUD
+AuthService --> UserRepo : CRUD
+StatisticsService --> StatisticsRepo : CRUD
+
+' ===== REPOSITORIES → DATABASE =====
+ReservationRepo --> DB : SQL
+RoomRepo --> DB : SQL
+EquipmentRepo --> DB : SQL
+UserRepo --> DB : SQL
+StatisticsRepo --> DB : SQL
+
+@enduml

@@ -1,0 +1,132 @@
+@startuml
+
+!theme plain
+
+
+left to right direction
+
+actor Utilisateur
+actor Administrateur
+actor Machine
+
+Utilisateur <|-- Administrateur
+
+rectangle "L'acteur doit être connecté pour accéder à l'application." {
+    package  "resevation des salles" {
+        usecase "Réservation en ligne" as UC1
+        usecase "Consulter disponibilités" as UC2
+        usecase "Recherche avancée" as UC3
+        package "gestion des réservations" {
+       
+        usecase "consulter réservation" as UC4
+        usecase "Éditer réservation" as UC5
+        usecase "Annuler réservation" as UC6
+        usecase "Recevoire les notifications" as UC7
+         }
+    }
+
+    package "gestion des salles" {
+        usecase "Ajouter des salles" as UC8
+        usecase "Modifier des salles" as UC9
+        usecase "Supprimer des salles" as UC10
+    }
+    package "gestion des equipements" {
+        usecase "Ajouter les equipements" as UC11
+        usecase "Modifier les equipements" as UC12
+        usecase "Supprimer les equipements" as UC13
+    }
+    
+    package "monitoring_et_statistiques" {
+        usecase "Générer les rapports" as UC14
+        usecase "Consulter les rapports" as UC15
+    }
+
+    package "gestion des utilisateurs" {
+        usecase "Ajouter un Administrateur" as UC16
+        usecase "Upgrade role from Utilisateur to Administrateur" as UC17
+        usecase "Downgrade role from Administrateur to Utilisateur" as UC18
+    }
+
+    package "traitement automatique" {
+        usecase "Envoyer les notifications" as UC19
+        usecase "Mettre à jour planning" as UC20
+        usecase "Traiter statistiques" as UC21
+    }
+  
+  UC1 .> UC2 : include
+  UC3 .> UC2 : extend
+}
+
+Utilisateur --> UC1
+Utilisateur --> UC2
+Utilisateur --> UC3
+Utilisateur --> UC4
+Utilisateur --> UC5
+Utilisateur --> UC6
+Utilisateur --> UC7
+
+
+Administrateur --> UC8
+Administrateur --> UC9
+Administrateur --> UC10
+Administrateur --> UC11
+Administrateur --> UC12
+Administrateur --> UC13
+Administrateur --> UC14
+Administrateur --> UC15
+Administrateur --> UC16
+Administrateur --> UC17
+Administrateur --> UC18
+
+
+
+Machine --> UC19
+Machine --> UC20
+Machine --> UC21
+
+UC4 .> UC10 : include
+UC5 .> UC10 : include
+UC6 .> UC11 : include
+UC8 .> UC12 : include
+
+note right of UC1
+ **Critères** :
+ - Date/Heure
+ - Capacité
+ - Équipements
+ - Localisation
+end note
+
+note right of UC2
+ **Filtres** :
+ - Capacité
+ - Équipements
+ - Localisation
+ - Disponibilité
+end note
+
+note right of UC19
+ **Types de notifications** :
+ - Confirmation
+ - Rappel
+ - Annulation
+ - Modification
+end note
+
+note right of UC12
+ **Ressources gérées** :
+ - Matériel audiovisuel
+ - Traiteur
+ - Parking
+ - Équipements
+end note
+
+note right of UC21
+ **Statistiques** :
+ - Taux d'occupation
+ - Nombre de réservations
+ - Pic d'utilisation
+ - Traçabilité
+end note
+
+@enduml
