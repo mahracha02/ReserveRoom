@@ -219,7 +219,7 @@ DB --> MailWorker: Full booking data
 
 MailWorker -> Mailer: send(BookingConfirmationEmail)
 activate Mailer
-Mailer -> User: 📧 Email de confirmation\n(async, ~1-5 sec après)
+Mailer -> User:  Email de confirmation\n(async, ~1-5 sec après)
 deactivate Mailer
 
 MailWorker -> DB: UPDATE bookings\nSET notification_sent = true\nWHERE id = 42
