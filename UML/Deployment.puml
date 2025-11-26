@@ -1,0 +1,45 @@
+@startuml Simple_Deployment
+
+title OVH VPS Deployment - React + Symfony
+
+actor Developer as dev
+actor User as user
+
+cloud "GitHub" {
+    [Frontend Repo]
+    [Backend Repo]
+}
+
+cloud "DNS" {
+    [yourdomain.com]
+}
+
+node "OVH VPS" {
+    
+    node "Nginx :80/:443" {
+        [React Build\n/var/www/frontend]
+        [Reverse Proxy\n/api -> Symfony]
+        [SSL Certificate]
+    }
+    
+    node "PHP-FPM" {
+        [Symfony API\n/var/www/backend]
+    }
+    
+    database "MySQL" {
+        [app_database]
+    }
+}
+
+dev --> [Frontend Repo] : git push
+dev --> [Backend Repo] : git push
+dev --> [Nginx :80/:443] : SSH deploy
+
+[yourdomain.com] --> [Nginx :80/:443]
+user --> [yourdomain.com] : HTTPS
+
+[React Build\n/var/www/frontend] --> [Reverse Proxy\n/api -> Symfony]
+[Reverse Proxy\n/api -> Symfony] --> [Symfony API\n/var/www/backend]
+[Symfony API\n/var/www/backend] --> [app_database]
+
+@enduml
