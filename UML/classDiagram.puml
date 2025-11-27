@@ -1,0 +1,151 @@
+@startuml ClassDiagram
+title Diagramme de Classes - Système de Réservation de Salles
+
+
+
+class User {
+        -id: UUID
+        -email: String
+        -firstName: String
+        -lastName: String
+        -role: Role <enum>
+        -createdAt: DateTime
+        +getRoles()
+        +getUserIdentifier(): String
+    }
+    
+    enum Role {
+        <<enumeration>>
+        USER
+        ADMIN
+}
+    
+    
+    class Room {
+        -id: UUID
+        -name: String
+        -capacity: int
+        -location: Location
+        -equipments: List~Equipment~
+        -roomStatus: RoomStatus
+        +canAccommodate(capacity): boolean
+        +hasEquipment(equipment): boolean
+    }
+    
+    class Location {
+        -building: String
+        -floor: int
+        -section: String
+        -coordinates: GeoPoint
+        +getFullAddress(): String
+    }
+    
+    class Equipment {
+        -id: UUID
+        -name: String
+        -type: EquipmentType
+        -quantity: int
+        +isAvailable(): boolean
+    }
+    
+    enum EquipmentType {
+        <<enumeration>>
+        PROJECTOR
+        WHITEBOARD
+        VIDEO_CONFERENCE
+        COMPUTER
+        AUDIO_SYSTEM
+    }
+    
+    class Booking {
+        -id: UUID
+        -room: Room
+        -user: User
+        -startTime: DateTime
+        -endTime: DateTime
+        -purpose: String
+        -status: BookingStatus
+        -resources: List~Resource~
+        -createdAt: DateTime
+        -updatedAt: DateTime
+        +isValid(): boolean
+        +cancel()
+        +modify(newStart, newEnd)
+    }
+    
+    enum BookingStatus {
+        <<enumeration>>
+        PENDING
+        CONFIRMED
+        CANCELLED
+        COMPLETED
+    }
+    
+    enum RoomStatus {
+        <<enumeration>>
+        AVAILABLE
+        MAINTENANCE
+        RESERVED
+        OUT_OF_SERVICE
+    }
+    
+    class Resource {
+        -id: UUID
+        -name: String
+        -type: ResourceType
+        -available: boolean
+        +allocate()
+        +release()
+    }
+    
+    enum ResourceType {
+        <<enumeration>>
+        AUDIOVISUAL
+        CATERING
+        PARKING
+        FURNITURE
+    }
+    
+    class Notification {
+        -id: UUID
+        -recipient: User
+        -type: NotificationType
+        -message: String
+        -sentAt: DateTime
+        -notificationStatus: NotificationStatus
+        +send()
+    }
+    
+    enum NotificationStatus {
+        <<enumeration>>
+        CONFIRMATION
+        REMINDER
+        CANCELLATION
+        MODIFICATION
+    }
+    
+    class Report {
+        -id: UUID
+        -title: String
+        -period: DateRange
+        -generatedBy: User
+        -data: ReportData
+        +getData(ReportData)
+        
+    }
+    
+    User "1" --> "*" Role 
+    Room "1" --> "1" Location
+    Room "*" --> "*" Equipment
+    Room "1" --> "1" RoomStatus
+    Equipment "1" --> "1" EquipmentType
+    Booking "*" --> "1" Room
+    Booking "*" --> "1" User
+    Booking "1" --> "1" BookingStatus
+    Booking "*" --> "*" Resource
+    Resource "1" --> "1" ResourceType
+    Notification "*" --> "1" User
+    Notification "1" --> "1" NotificationStatus
+    Report "*" --> "1" User
+
+@enduml
