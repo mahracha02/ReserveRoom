@@ -7,6 +7,7 @@ backend/reserveroom/config/secrets/prod/prod.decrypt.private.php
 backend/reserveroom/public/bundles/
 backend/reserveroom/var/
 backend/reserveroom/vendor/
+backend/reserveroom/.env.dev
 ###< symfony/framework-bundle ###
 
 ### React
@@ -38,7 +39,7 @@ dist-ssr
 
 #### global env files
 *.env.*
-
+.env.*
 #### frontend specific
 frontend/node_modules/
 frontend/build/
