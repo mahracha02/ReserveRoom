@@ -37,4 +37,10 @@ dist-ssr
 *.sw?
 
 #### global env files
-*.env
+*.env.*
+
+#### frontend specific
+frontend/node_modules/
+frontend/build/
+frontend/dist/
+frontend/.env.local
