@@ -1,10 +1,40 @@
 
 ###> symfony/framework-bundle ###
-/.env.local
-/.env.local.php
-/.env.*.local
-/config/secrets/prod/prod.decrypt.private.php
-/public/bundles/
-/var/
-/vendor/
+backend/reserveroom/.env.local
+backend/reserveroom/.env.local.php
+backend/reserveroom/.env.*.local
+backend/reserveroom/config/secrets/prod/prod.decrypt.private.php
+backend/reserveroom/public/bundles/
+backend/reserveroom/var/
+backend/reserveroom/vendor/
 ###< symfony/framework-bundle ###
+
+### React
+
+#### Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+#### Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+#### global env files
+*.env
