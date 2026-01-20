@@ -25,19 +25,27 @@ class User {
         -id: UUID
         -name: String
         -capacity: int
-        -location: Location
+        -floor: Floor
         -equipments: List~Equipment~
         -roomStatus: RoomStatus
         +canAccommodate(capacity): boolean
         +hasEquipment(equipment): boolean
     }
     
-    class Location {
-        -building: String
-        -floor: int
+    class Building {
+        -id: UUID
+        -buildingName: String
         -section: String
         -coordinates: GeoPoint
         +getFullAddress(): String
+    }
+
+    class Floor {
+        -id: UUID
+        -floorNumber: int
+        -building: Building
+        -description: String
+        +getFloorInfo(): String
     }
     
     class Equipment {
@@ -71,6 +79,7 @@ class User {
         +isValid(): boolean
         +cancel()
         +modify(newStart, newEnd)
+        
     }
     
     enum BookingStatus {
@@ -112,7 +121,7 @@ class User {
         -type: NotificationType
         -message: String
         -sentAt: DateTime
-        -notificationStatus: NotificationStatus
+        -notificationStatus: NotificationType
         +send()
     }
     
@@ -134,18 +143,19 @@ class User {
         
     }
     
-    User "1" --> "*" Role 
-    Room "1" --> "1" Location
-    Room "*" --> "*" Equipment
-    Room "1" --> "1" RoomStatus
-    Equipment "1" --> "1" EquipmentType
+    User "1" --> "1" Role 
+  Room "*" --> "1" Floor
+Floor "*" --> "1" Building
+    Room "1" o-- "*" Equipment
+    Room "1" ..> "1" RoomStatus
+    Equipment "1" ..> "1" EquipmentType
     Booking "*" --> "1" Room
     Booking "*" --> "1" User
-    Booking "1" --> "1" BookingStatus
+    Booking "1" ..> "1" BookingStatus
     Booking "*" --> "*" Resource
-    Resource "1" --> "1" ResourceType
+    Resource "1" ..> "1" ResourceType
     Notification "*" --> "1" User
-    Notification "1" --> "1" NotificationStatus
+    Notification "1" ..> "1" NotificationType
     Report "*" --> "1" User
 
 @enduml
