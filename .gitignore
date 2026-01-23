@@ -1,13 +1,14 @@
 
 ###> symfony/framework-bundle ###
 backend/reserveroom/.env.local
+backend/reserveroom/.env.prod
 backend/reserveroom/.env.local.php
 backend/reserveroom/.env.*.local
 backend/reserveroom/config/secrets/prod/prod.decrypt.private.php
 backend/reserveroom/public/bundles/
 backend/reserveroom/var/
 backend/reserveroom/vendor/
-backend/reserveroom/.env.dev
+
 ###< symfony/framework-bundle ###
 
 ### React
@@ -40,6 +41,8 @@ dist-ssr
 #### global env files
 *.env.*
 .env.*
+*.env.dev
+*.env.prod
 #### frontend specific
 frontend/node_modules/
 frontend/build/
